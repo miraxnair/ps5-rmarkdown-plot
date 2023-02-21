@@ -1,0 +1,234 @@
+---
+title: "ps5-rmarkdown"
+author: "Mira Nair"
+date: "2023-02-19"
+output: html_document
+---
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r, echo=FALSE}
+library(tidyverse)
+library(dplyr)
+gapminder <- read_delim("gapminder.csv.bz2")
+```
+
+There are `r ncol(gapminder)` columns and `r nrow(gapminder)` rows.
+Example of the dataset: 
+```{r , echo=FALSE}
+head(gapminder, 3)
+```
+The sample dataset looks good!
+
+1. There are `r n_distinct(gapminder$name)` countries under "name", there are `r n_distinct(gapminder$iso2)` countries under "iso2", and there are `r n_distinct(gapminder$iso3)` under "iso3".
+
+2. 
+```{r, echo=FALSE}
+gapminder %>%
+  group_by(iso2)%>%
+  summarise(n = n_distinct(name)) %>%
+            filter(min_rank(desc(n))<6)
+            
+```
+
+```{r, echo=FALSE}
+gapminder %>%
+  filter(is.na(iso2))%>%
+  distinct(name)
+```
+
+
+```{r, echo=FALSE}
+gapminder %>%
+  group_by(iso3)%>%
+  summarise(n = n_distinct(name)) %>%
+            filter(min_rank(desc(n))<6)
+            
+```
+
+```{r, echo=FALSE}
+gapminder %>%
+  filter(nchar(iso3) > 3)%>%
+  distinct(name)
+```
+
+3. These are the earliest and latest dates in the dataset.
+```{r, echo=FALSE}
+new1 <- na.omit(gapminder$time)
+min(new1)
+max(new1)
+```
+
+
+
+
+--->3 CO2 emissions
+1. This the table for all of the missing co2_PC emissions throughout the years and the first year, 1960, has the most missing data.
+```{r, echo=FALSE}
+gapminder%>%
+  group_by(time)%>%
+  filter(is.na(co2_PC))%>%
+  count(is.na(co2_PC))
+```
+
+ 
+2. This is a plot of CO2 emissions in the U.S, China, India, Canada, and Mexico over time.
+```{r, echo=FALSE}
+new <- filter(gapminder, name == 'China'| name == 'India' | name == 'U.S' | name == 'Mexico' | name == 'Canada' | name == 'United States of America')
+
+ggplot(new) +
+  geom_point(mapping = aes(x=time, y=co2, color = name))
+```
+China has the highest CO2 emissions out of all of the countries. America also has pretty high CO2 emissions. The others don't seem to be drastic in their emissions.
+
+3. This is a plot of CO2 emissions per capita in the U.S, China, India, Canada, and Mexico over time. 
+```{r, echo=FALSE}
+new <- filter(gapminder, name == 'China'| name == 'India' | name == 'U.S' | name == 'Mexico' | name == 'Canada' | name == 'United States of America')
+
+ggplot(new) +
+  geom_point(mapping = aes(x=time, y=co2_PC, color = name))
+```
+The U.S has the highest CO2 emissions per capita out of all of the countries provided, while China is next and Mexico, India, and Canada are a lot lower on the graph.
+
+4. This table shows the average CO2 emissions per capita across the continents.
+```{r, echo=FALSE}
+newg <- gapminder %>%
+  select(region, co2_PC)
+new2 <- na.omit(newg)
+new2%>%
+  group_by(region)%>%
+  summarise(n = mean(co2_PC))
+```
+
+
+5. 
+```{r, echo=FALSE}
+plot <- gapminder%>%
+  group_by(region, time)%>%
+  filter(!is.na(co2_PC),
+         time %in% c(1960, 2016),
+         !is.na(region)) %>%
+  summarize(avg_co2 = mean(co2_PC, na.re = TRUE))
+
+ggplot(plot, aes(region, avg_co2, col = factor(time), fill = factor(time), na.re=TRUE)) +
+  geom_bar(stat = "identity", position = "dodge", na.re=TRUE)
+
+```
+
+6. This table shows the three largest and three smallest CO2 emitters for each continent.
+```{r, echo=FALSE}
+newg<- gapminder%>%
+ filter(time == 2010)%>%
+  select(region, co2, name)
+new2 <- na.omit(newg)
+n <- new2%>%
+  group_by(region)%>%
+  arrange(co2)
+
+top3<- n%>%
+slice_tail(n=3)%>%
+  arrange(desc(co2))
+
+small3<-n%>%
+  slice_head(n=3)
+top3
+small3
+```
+--->4. GDP per Capita
+
+1. GDP per capita versus life expectancy in 1960
+```{r, echo=FALSE}
+gdp1960 <- gapminder%>%
+  filter(time == 1960)
+
+ggplot(data = gdp1960) +
+  geom_point(mapping = aes(x=lifeExpectancy, y = GDP_PC, color = region, size = GDP_PC)) 
+```
+  
+2. GDP per capita versus life expectancy in 2019   
+```{r, echo=FALSE}
+gdp1960 <- gapminder%>%
+  filter(time == 2019)
+
+ggplot(data = gdp1960) +
+  geom_point(mapping = aes(x=lifeExpectancy, y = GDP_PC, color = region, size = GDP_PC)) 
+```
+
+3. The plots overall show the same pattern of Western countries having a higher life expectancy but the change between the years shows that every country is still increasing its life expectancy.
+
+4. Yes the results fit.
+```{r, echo=FALSE}
+plot <- gapminder%>%
+  group_by(region, time)%>%
+  filter(!is.na(lifeExpectancy),
+         time %in% c(1960, 2019),
+         !is.na(region)) %>%
+  summarize(avg_le = mean(lifeExpectancy, na.re = TRUE))
+plot
+```
+
+5. 
+```{r, echo=FALSE}
+legrowth<- gapminder%>%
+  select(region, time, lifeExpectancy)%>%
+  group_by(region)%>%
+  mutate(lediff = lifeExpectancy-lag(lifeExpectancy))%>%
+  filter(time %in% c(1960, 2019))
+print(legrowth)
+```
+  
+6. 
+```{r, echo=TRUE}
+plot <- gapminder%>%
+  group_by(GDP_PC, time)%>%
+  filter(!is.na(GDP_PC),
+         time %in% c(1960, 2019)) %>%
+  summarize(avg_GDP = mean(GDP_PC, na.re = TRUE))
+
+ggplot(plot, aes( time, GDP_PC, col = factor(time), fill = factor(time), na.re=TRUE)) +
+  geom_bar(stat = "identity", position = "dodge", na.re=TRUE)
+
+```
+
+7.
+```{r, echo=FALSE}
+data <- gapminder %>%
+  filter(time == 1960)
+
+rank <- arrange(data, desc(lifeExpectancy))
+us<- which(rank$name == "United States of America") +1
+```
+The United States is ranked `r us` in life expectancy in 1960.
+
+```{r, echo=FALSE}
+data <- gapminder %>%
+  filter(time == 2019)
+
+rank <- arrange(data, desc(lifeExpectancy))
+us<- which(rank$name == "United States of America") +1
+```
+The United States is ranked `r us` in life expectancy in 2019.
+
+8.
+```{r, echo=FALSE}
+data <- gapminder %>%
+  filter(time == 1960)
+num <- n_distinct(data$name)
+rank <- arrange(data, desc(lifeExpectancy))
+
+us<- which(rank$name == "United States of America")
+us_rank <- us/num
+```
+
+The United States is ranked `r us_rank` relative to the number of countries with life expectancy data in 1960.
+
+```{r, echo=FALSE}
+data <- gapminder %>%
+  filter(time == 2019)
+num <- n_distinct(data$name)
+rank <- arrange(data, desc(lifeExpectancy))
+
+us<- which(rank$name == "United States of America")
+us_rank <- us/num
+```
+
+The United States is ranked `r us_rank` relative to the number of countries with life expectancy data in 2019.
